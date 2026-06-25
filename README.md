@@ -10,11 +10,6 @@ This repository contains the source code for the paper:
 
 ## Overview
 
-<p align="center">
-  <img src="./figs/system.png" width="80%" alt="The architecture of Demeter.">
-</p>
-
-
 Demeter is a fine-grained function orchestrator for geo-distributed serverless analytics. It targets analytics jobs represented as Directed Acyclic Graphs (DAGs), where each stage contains many short-lived serverless functions that may run near different data centers.
 
 This version implements the journal-version design for exploiting wide-area resource elasticity:
