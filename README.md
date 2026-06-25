@@ -2,7 +2,7 @@
 
 <!-- ![TON 2025](https://img.shields.io/badge/TON-2025-blue)
 ![Paper PDF](https://img.shields.io/badge/Paper-PDF-red)
-![Python](https://img.shields.io/badge/Python-3.9%2B-green) -->
+![Python](https://img.shields.io/badge/Python-3.10%2B-green) -->
 
 This repository contains the source code for the paper:
 
@@ -25,7 +25,7 @@ This version implements the journal-version design for exploiting wide-area reso
 
 ### Python Runtime
 
-- Python 3.9+
+- Python 3.10+
 - `numpy`
 - `PyYAML`
 - `networkx`

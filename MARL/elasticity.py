@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Mapping, Sequence, Tuple
+from typing import Dict, List, Mapping, Sequence, Tuple
 
 from .models import FunctionSpec, FunctionStatus, JobSpec, Observation
 
@@ -126,12 +126,12 @@ def apply_dop_decisions(
     decisions: Sequence[DoPDecision],
     now: float = 0.0,
 ) -> int:
-    """Coalesce pending function requests to the synchronized DoP plan.
+    """Rewrite pending stage function graphs to match the synchronized DoP plan.
 
     The runtime Pheromone path would repartition buckets before invocation.
-    In the simulator we model that by merging the data assigned to overflow
-    functions into the retained functions and marking the overflow nodes as
-    already represented by the tuned stage.
+    In the simulator we model that before execution by retaining the target
+    number of function nodes, redistributing stage data across them, and
+    deleting overflow function nodes from the execution graph.
     """
 
     changed = 0
@@ -139,46 +139,116 @@ def apply_dop_decisions(
         job = jobs.get(decision.job_id)
         if job is None or decision.new_parallelism >= decision.old_parallelism:
             continue
-        pending = sorted(
-            [
-                fn
-                for fn in job.functions.values()
-                if fn.stage_id == decision.stage_id and fn.status == FunctionStatus.PENDING
-            ],
-            key=lambda fn: fn.function_id,
-        )
-        kept = pending[: decision.new_parallelism]
-        overflow = pending[decision.new_parallelism :]
-        if not kept:
-            continue
-        for idx, fn in enumerate(overflow):
-            target = kept[idx % len(kept)]
-            target.input_mb += fn.input_mb
-            target.output_mb += fn.output_mb
-            for dc_name, mb in fn.source_dcs.items():
-                target.source_dcs[dc_name] = target.source_dcs.get(dc_name, 0.0) + mb
-            for successor_id in list(fn.successors):
-                successor = job.functions.get(successor_id)
-                if successor is None:
-                    continue
-                successor.predecessors = [
-                    target.function_id if pred == fn.function_id else pred
-                    for pred in successor.predecessors
-                ]
-                if target.function_id not in successor.predecessors:
-                    successor.predecessors.append(target.function_id)
-                if successor_id not in target.successors:
-                    target.successors.append(successor_id)
-            fn.successors.clear()
-            fn.status = FunctionStatus.FINISHED
-            fn.start_time = now
-            fn.finish_time = now
-            fn.observed_duration = 0.0
-            fn.metadata["dop_coalesced"] = 1.0
-            fn.metadata["dop_target"] = float(pending.index(target))
-            changed += 1
+        changed += _rewrite_stage_functions(job, decision, now)
         for stage in job.stages:
             if stage.stage_id == decision.stage_id:
+                stage.parallelism = decision.new_parallelism
                 stage.metadata["tuned_parallelism"] = float(decision.new_parallelism)
                 break
     return changed
+
+
+def _rewrite_stage_functions(job: JobSpec, decision: DoPDecision, now: float) -> int:
+    stage_fns = sorted(
+        [
+            fn
+            for fn in job.functions.values()
+            if fn.stage_id == decision.stage_id and fn.status == FunctionStatus.PENDING
+        ],
+        key=lambda fn: fn.function_id,
+    )
+    new_parallelism = max(1, min(decision.new_parallelism, len(stage_fns)))
+    kept = stage_fns[:new_parallelism]
+    overflow = stage_fns[new_parallelism:]
+    if not kept or not overflow:
+        return 0
+
+    original_input = sum(fn.input_mb for fn in stage_fns)
+    original_output = sum(fn.output_mb for fn in stage_fns)
+    original_sources = _sum_sources(stage_fns)
+    predecessors = sorted({pred for fn in stage_fns for pred in fn.predecessors})
+    successors = sorted({succ for fn in stage_fns for succ in fn.successors})
+    removed_ids = {fn.function_id for fn in overflow}
+
+    per_input = original_input / new_parallelism
+    per_output = original_output / new_parallelism
+    for idx, fn in enumerate(kept):
+        fn.input_mb = per_input
+        fn.output_mb = per_output
+        fn.source_dcs = {name: mb / new_parallelism for name, mb in original_sources.items()}
+        fn.predecessors = _predecessors_for_tuned_stage(predecessors, idx, new_parallelism)
+        fn.successors = _successors_for_tuned_stage(successors, idx, new_parallelism)
+        fn.metadata["dop_tuned"] = 1.0
+        fn.metadata["dop_original_parallelism"] = float(decision.old_parallelism)
+        fn.metadata["dop_tuned_at"] = now
+
+    for fn in overflow:
+        del job.functions[fn.function_id]
+
+    _rewrite_neighbors(job, removed_ids, kept)
+    return len(overflow)
+
+
+def _sum_sources(functions: Sequence[FunctionSpec]) -> Dict[str, float]:
+    sources: Dict[str, float] = {}
+    for fn in functions:
+        for dc_name, mb in fn.source_dcs.items():
+            sources[dc_name] = sources.get(dc_name, 0.0) + mb
+    return sources
+
+
+def _predecessors_for_tuned_stage(
+    predecessors: Sequence[str],
+    idx: int,
+    new_parallelism: int,
+) -> List[str]:
+    if not predecessors:
+        return []
+    if len(predecessors) == new_parallelism:
+        return [predecessors[idx]]
+    return list(predecessors)
+
+
+def _successors_for_tuned_stage(
+    successors: Sequence[str],
+    idx: int,
+    new_parallelism: int,
+) -> List[str]:
+    if not successors:
+        return []
+    if len(successors) == new_parallelism:
+        return [successors[idx]]
+    return list(successors)
+
+
+def _rewrite_neighbors(
+    job: JobSpec,
+    removed_ids: set[str],
+    kept: Sequence[FunctionSpec],
+) -> None:
+    kept_ids = [fn.function_id for fn in kept]
+    for fn in job.functions.values():
+        fn.predecessors = _rewrite_references(fn.predecessors, removed_ids, kept_ids)
+        fn.successors = _rewrite_references(fn.successors, removed_ids, kept_ids)
+
+
+def _rewrite_references(
+    refs: Sequence[str],
+    removed_ids: set[str],
+    kept_ids: Sequence[str],
+) -> List[str]:
+    if not refs:
+        return []
+    out: List[str] = []
+    had_removed = False
+    for ref in refs:
+        if ref in removed_ids:
+            had_removed = True
+            continue
+        if ref not in out:
+            out.append(ref)
+    if had_removed:
+        for kept_id in kept_ids:
+            if kept_id not in out:
+                out.append(kept_id)
+    return out

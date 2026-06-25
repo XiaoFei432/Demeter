@@ -65,16 +65,37 @@ def test_pruner_uses_history_to_narrow_allocation_pool():
     assert all(alloc.memory_mb >= baseline.memory_mb for alloc in pool)
 
 
-def test_dop_tuning_coalesces_congested_wave():
+def test_dop_tuning_rewrites_congested_stage_graph():
     config = load_config("configs/demeter.yml")
     config.runtime.max_wave_size = 4
     profile = generate_job_profiles(1, [dc.name for dc in config.data_centers], seed=11)[0]
     profile["stages"][0]["parallelism"] = 12
     controller = DemeterController(config)
-    controller.register_job(profile)
+    job = controller.register_job(profile)
+    stage_id = profile["stages"][0]["id"]
+    original_stage_functions = [
+        fn for fn in job.functions.values() if fn.stage_id == stage_id
+    ]
+    original_input = sum(fn.input_mb for fn in original_stage_functions)
     obs = controller.observe(0.0)
+    tuned_stage_functions = [
+        fn for fn in job.functions.values() if fn.stage_id == stage_id
+    ]
+    removed_ids = {
+        fn.function_id for fn in original_stage_functions
+    } - {
+        fn.function_id for fn in tuned_stage_functions
+    }
     assert controller.dop_decisions
     assert len(obs.all_pending_functions()) <= config.runtime.max_wave_size
+    assert len(tuned_stage_functions) <= config.runtime.max_wave_size
+    assert len(tuned_stage_functions) < len(original_stage_functions)
+    assert sum(fn.input_mb for fn in tuned_stage_functions) == original_input
+    assert not any(
+        removed_id in fn.predecessors or removed_id in fn.successors
+        for fn in job.functions.values()
+        for removed_id in removed_ids
+    )
 
 
 def test_jump_hash_partitioner_is_stable_and_bounded():

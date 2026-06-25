@@ -7,7 +7,7 @@ name = "demeter-orchestrator"
 version = "0.1.0"
 description = "Fine-grained function orchestration for geo-distributed serverless analytics"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.23",
   "PyYAML>=6.0",
