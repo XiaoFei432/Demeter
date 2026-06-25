@@ -1,0 +1,75 @@
+data_centers:
+  - name: paris
+    node_ip: 10.0.0.11
+    region: eu-west-3
+    available_executors: 32
+    warm_containers: 4
+    price_core_second: 0.00001667
+    price_gb_second: 0.00000965
+    bandwidth_mbps: {ohio: 520, oregon: 440, london: 720, virginia: 500, singapore: 310, sydney: 280, tokyo: 330}
+  - name: ohio
+    node_ip: 10.0.0.12
+    region: us-east-2
+    available_executors: 32
+    warm_containers: 4
+    bandwidth_mbps: {paris: 520, oregon: 880, london: 540, virginia: 900, singapore: 360, sydney: 320, tokyo: 390}
+  - name: oregon
+    node_ip: 10.0.0.13
+    region: us-west-2
+    available_executors: 32
+    warm_containers: 4
+    bandwidth_mbps: {paris: 440, ohio: 880, london: 430, virginia: 810, singapore: 430, sydney: 390, tokyo: 520}
+  - name: london
+    node_ip: 10.0.0.14
+    region: eu-west-2
+    available_executors: 32
+    warm_containers: 4
+    bandwidth_mbps: {paris: 720, ohio: 540, oregon: 430, virginia: 560, singapore: 320, sydney: 280, tokyo: 340}
+  - name: virginia
+    node_ip: 10.0.0.15
+    region: us-east-1
+    available_executors: 32
+    warm_containers: 4
+    bandwidth_mbps: {paris: 500, ohio: 900, oregon: 810, london: 560, singapore: 360, sydney: 310, tokyo: 380}
+  - name: singapore
+    node_ip: 10.0.0.16
+    region: ap-southeast-1
+    available_executors: 32
+    warm_containers: 4
+    bandwidth_mbps: {paris: 310, ohio: 360, oregon: 430, london: 320, virginia: 360, sydney: 650, tokyo: 760}
+  - name: sydney
+    node_ip: 10.0.0.17
+    region: ap-southeast-2
+    available_executors: 32
+    warm_containers: 4
+    bandwidth_mbps: {paris: 280, ohio: 320, oregon: 390, london: 280, virginia: 310, singapore: 650, tokyo: 520}
+  - name: tokyo
+    node_ip: 10.0.0.18
+    region: ap-northeast-1
+    available_executors: 32
+    warm_containers: 4
+    bandwidth_mbps: {paris: 330, ohio: 390, oregon: 520, london: 340, virginia: 380, singapore: 760, sydney: 520}
+
+allocation_grid:
+  cpu_values: [1, 2, 4, 8]
+  memory_values_mb: [128, 512, 1024, 2048, 4096, 8192, 10240]
+
+model:
+  embedding_dim: 64
+  gnn_layers: 3
+  temporal_window: 5
+  transformer_layers: 3
+  transformer_heads: 8
+  score_hidden: [32, 16]
+  lr: 0.0003
+  gamma: 1.0
+  clip_epsilon: 0.2
+  penalty_beta: 0.3
+  timeout_seconds: 120
+
+runtime:
+  interval_seconds: 5
+  max_wave_size: 20
+  memory_loss_factor: 0.8
+  enable_cluster_rpc: false
+  policy_path: checkpoints/demeter.pt

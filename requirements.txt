@@ -1,0 +1,7 @@
+numpy>=1.23
+PyYAML>=6.0
+networkx>=3.0
+torch>=2.0
+prometheus-api-client>=0.5
+kubernetes>=29.0
+tqdm>=4.64

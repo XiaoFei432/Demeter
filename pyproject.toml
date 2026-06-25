@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "demeter-orchestrator"
+version = "0.1.0"
+description = "Fine-grained function orchestration for geo-distributed serverless analytics"
+requires-python = ">=3.9"
+dependencies = [
+  "numpy>=1.23",
+  "PyYAML>=6.0",
+  "networkx>=3.0",
+]
+
+[project.optional-dependencies]
+train = ["torch>=2.0", "tqdm>=4.64"]
+cluster = ["prometheus-api-client>=0.5", "kubernetes>=29.0"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+demeter = "MARL.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["MARL*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
