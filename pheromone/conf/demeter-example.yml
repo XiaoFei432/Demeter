@@ -1,0 +1,30 @@
+coord_threads: 1
+io_threads: 1
+manager: 127.0.0.1
+ip:
+  private: 127.0.0.1
+  public: 127.0.0.1
+delay: 0
+
+demeter:
+  enabled: 1
+  memory_loss_factor: 0.8
+  allocations:
+    - {name: 1c-128m, cpu_cores: 1, memory_mb: 128}
+    - {name: 1c-512m, cpu_cores: 1, memory_mb: 512}
+    - {name: 2c-1024m, cpu_cores: 2, memory_mb: 1024}
+    - {name: 4c-2048m, cpu_cores: 4, memory_mb: 2048}
+    - {name: 8c-4096m, cpu_cores: 8, memory_mb: 4096}
+    - {name: 8c-8192m, cpu_cores: 8, memory_mb: 8192}
+    - {name: 8c-10240m, cpu_cores: 8, memory_mb: 10240}
+  nodes:
+    - ip: 10.0.0.11
+      dc: paris
+      warm_weight: 0.15
+      load_weight: 0.35
+      locality_weight: 1.0
+    - ip: 10.0.0.12
+      dc: ohio
+      warm_weight: 0.15
+      load_weight: 0.35
+      locality_weight: 1.0

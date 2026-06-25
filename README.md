@@ -30,8 +30,6 @@ Demeter is a fine-grained function orchestrator for geo-distributed serverless a
 - `tqdm` for training utilities
 - `prometheus-api-client` and `kubernetes` for cluster-side integrations
 
-Install everything listed in the repository:
-
 ```bash
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
@@ -49,8 +47,6 @@ Building it requires a Linux-like development environment with:
 - Protobuf compiler and development libraries
 - ZeroMQ and yaml-cpp dependencies used by Pheromone
 - Kubernetes tooling for cluster deployment
-
-The Python simulator can run without building Pheromone.
 
 ---
 

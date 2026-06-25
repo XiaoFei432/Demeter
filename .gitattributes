@@ -1,0 +1,22 @@
+* text=auto
+
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.cpp text eol=lf
+*.hpp text eol=lf
+*.h text eol=lf
+*.proto text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.so* binary
+
+pheromone/common/shm-ipc/3rdparty/** linguist-vendored
+pheromone/common/hydro-vendor/** linguist-vendored
+pheromone/client/anna_client/** linguist-vendored

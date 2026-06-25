@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Local configuration and outputs
+.env
+.env.*
+!.env.example
+results/
+outputs/
+checkpoints/
+logs/
+*.log
+
+# Editors and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# CMake and native build outputs
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+Makefile
+*.d
+*.slo
+*.lo
+*.o
+*.obj
+*.gch
+*.pch
+*.so
+*.dylib
+*.dll
+*.lai
+*.la
+*.a
+*.lib
+*.exe
+*.out
+*.app
+
+# Pheromone generated files
+*_pb2.py
+!pheromone/client/anna_client/anna/*_pb2.py
+pheromone/client/pheromone/benchmarks/test.py
+pheromone/examples/cpp/test
