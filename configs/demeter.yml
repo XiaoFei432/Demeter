@@ -71,5 +71,12 @@ runtime:
   interval_seconds: 5
   max_wave_size: 20
   memory_loss_factor: 0.8
+  enable_pruning: true
+  pruning_history_limit: 8
+  pruning_input_bucket_ratio: 0.25
+  pruning_overload_threshold: 0.8
+  enable_dop_tuning: true
+  min_parallelism: 1
+  max_parallelism: 256
   enable_cluster_rpc: false
   policy_path: checkpoints/demeter.pt

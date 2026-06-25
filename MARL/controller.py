@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence
 
 from .config import DemeterConfig, load_config
+from .elasticity import DoPTuner, ElasticityConfig, apply_dop_decisions
+from .history import InvocationHistory
 from .models import FunctionSpec, FunctionStatus, JobSpec, Observation, OrchestrationAction
 from .optimizer import DAGOptimizer
 from .policy import BasePolicy, DemeterHeuristicPolicy, PheromonePolicy, RandomPolicy
@@ -27,12 +29,27 @@ class DemeterController:
             config = load_config(config)
         self.config = config
         self.optimizer = DAGOptimizer()
+        self.invocation_history = InvocationHistory(
+            bucket_ratio=config.runtime.pruning_input_bucket_ratio,
+        )
+        self.dop_tuner = DoPTuner(
+            ElasticityConfig(
+                enabled=config.runtime.enable_dop_tuning,
+                min_parallelism=config.runtime.min_parallelism,
+                max_parallelism=config.runtime.max_parallelism,
+            )
+        )
         self.policy = policy or DemeterHeuristicPolicy(
             allocations=config.allocations,
             memory_loss_factor=config.runtime.memory_loss_factor,
+            enable_pruning=config.runtime.enable_pruning,
+            pruning_history_limit=config.runtime.pruning_history_limit,
+            pruning_input_bucket_ratio=config.runtime.pruning_input_bucket_ratio,
+            pruning_overload_threshold=config.runtime.pruning_overload_threshold,
         )
         self.jobs: Dict[str, JobSpec] = {}
         self.history: List[Mapping[str, float]] = []
+        self.dop_decisions: List[Mapping[str, float | str]] = []
 
     def register_job(self, raw_profile: Mapping) -> JobSpec:
         job = self.optimizer.build_job(raw_profile)
@@ -55,6 +72,43 @@ class DemeterController:
                             pending_by_dc[dc_name].append(fn)
 
         max_wave = self.config.runtime.max_wave_size
+        draft = Observation(
+            now=now,
+            jobs=list(self.jobs.values()),
+            data_centers=self.config.data_centers,
+            pending_by_dc={name: list(fns) for name, fns in pending_by_dc.items()},
+            running=running,
+            history=self.history[-self.config.model.temporal_window :],
+            invocation_history=self.invocation_history,
+        )
+        decisions = self.dop_tuner.tune_observation(draft, max_wave)
+        if decisions:
+            apply_dop_decisions(self.jobs, decisions, now=now)
+            self.dop_decisions.extend(
+                [
+                    {
+                        "time": now,
+                        "job_id": decision.job_id,
+                        "stage_id": decision.stage_id,
+                        "old_parallelism": decision.old_parallelism,
+                        "new_parallelism": decision.new_parallelism,
+                        "alpha": decision.alpha,
+                    }
+                    for decision in decisions
+                ]
+            )
+            pending_by_dc = {dc.name: [] for dc in self.config.data_centers}
+            running = []
+            for job in self.jobs.values():
+                for fn in job.functions.values():
+                    if fn.status == FunctionStatus.RUNNING:
+                        running.append(fn)
+                    if fn.status == FunctionStatus.PENDING:
+                        candidates = fn.candidate_dcs or list(pending_by_dc.keys())
+                        for dc_name in candidates:
+                            if dc_name in pending_by_dc:
+                                pending_by_dc[dc_name].append(fn)
+
         for dc_name, fns in pending_by_dc.items():
             pending_by_dc[dc_name] = fns[:max_wave]
 
@@ -65,6 +119,7 @@ class DemeterController:
             pending_by_dc=pending_by_dc,
             running=running,
             history=self.history[-self.config.model.temporal_window :],
+            invocation_history=self.invocation_history,
         )
 
     def plan(self, observation: Optional[Observation] = None) -> List[OrchestrationAction]:

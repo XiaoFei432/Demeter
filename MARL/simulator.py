@@ -24,6 +24,8 @@ class EpisodeResult:
     avg_slo_bias: float
     slo_violations: float
     memory_usage_gb_seconds: float
+    dop_tuning_events: int = 0
+    history_records: int = 0
 
 
 class DemeterEnv:
@@ -39,12 +41,14 @@ class DemeterEnv:
         self.total_cost = 0.0
         self.memory_usage_gb_seconds = 0.0
         self.finished_functions = 0
+        self.dop_tuning_events = 0
 
     def reset(self) -> Observation:
         self.now = 0.0
         self.total_cost = 0.0
         self.memory_usage_gb_seconds = 0.0
         self.finished_functions = 0
+        self.dop_tuning_events = 0
         config = copy.deepcopy(self.base_config)
         self.controller = DemeterController(config)
         for raw in self.job_profiles:
@@ -83,19 +87,31 @@ class DemeterEnv:
             fn.status = FunctionStatus.FINISHED
             fn.resource_peak_cpu = action.allocation.cpu_cores
             fn.resource_peak_memory_mb = min(action.allocation.memory_mb, fn.input_mb * 1.1)
+            fn.metadata["affinity"] = action.posterior
             dc.running_functions = max(0, dc.running_functions - 1)
             dc.available_executors += 1
             dc.warm_containers += 1
             self.total_cost += metrics.total_cost
             self.memory_usage_gb_seconds += action.allocation.memory_gb * fn.observed_duration
             self.finished_functions += 1
+            job = self.controller.jobs.get(fn.job_id)
+            if job is not None:
+                elapsed = max(0.0, fn.finish_time - job.arrival_time)
+                progress = min(1.0, elapsed / max(job.slo_seconds, 1e-6))
+                self.controller.invocation_history.add_from_function(
+                    fn,
+                    job_progress=progress,
+                    affinity=action.posterior,
+                )
             reward -= metrics.total_cost
             max_finish = max(max_finish, fn.finish_time)
 
         self.now = max_finish + self.controller.config.runtime.interval_seconds
         for job in self.controller.jobs.values():
             self.controller.optimizer.release_ready_functions(job, self.now)
+        previous_dop_events = len(self.controller.dop_decisions)
         obs = self.controller.observe(self.now)
+        self.dop_tuning_events += len(self.controller.dop_decisions) - previous_dop_events
         done = all(job.finished() for job in self.controller.jobs.values())
         if done:
             reward += self._terminal_reward()
@@ -115,6 +131,8 @@ class DemeterEnv:
             avg_slo_bias=float(np.mean(slo_bias) if slo_bias else 0.0),
             slo_violations=float(sum(violations) / max(len(jobs), 1)),
             memory_usage_gb_seconds=self.memory_usage_gb_seconds,
+            dop_tuning_events=self.dop_tuning_events,
+            history_records=len(self.controller.invocation_history),
         )
 
     def _terminal_reward(self) -> float:

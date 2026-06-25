@@ -1,12 +1,12 @@
-# Demeter: Fine-grained Function Orchestration for Geo-distributed Serverless Analytics
+# Demeter: Exploiting Wide-Area Resource Elasticity With Fine-Grained Orchestration
 
-<!-- ![INFOCOM 2024](https://img.shields.io/badge/INFOCOM-2024-blue)
+<!-- ![TON 2025](https://img.shields.io/badge/TON-2025-blue)
 ![Paper PDF](https://img.shields.io/badge/Paper-PDF-red)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-green) -->
 
 This repository contains the source code for the paper:
 
-> Demeter: Fine-grained Function Orchestration for Geo-distributed Serverless Analytics, IEEE INFOCOM 2024.
+> Exploiting Wide-Area Resource Elasticity With Fine-Grained Orchestration for Serverless Analytics, IEEE/ACM Transactions on Networking, 2025.
 
 ## Overview
 
@@ -16,6 +16,13 @@ This repository contains the source code for the paper:
 
 
 Demeter is a fine-grained function orchestrator for geo-distributed serverless analytics. It targets analytics jobs represented as Directed Acyclic Graphs (DAGs), where each stage contains many short-lived serverless functions that may run near different data centers.
+
+This version implements the journal-version design for exploiting wide-area resource elasticity:
+
+- fine-grained per-function placement and multi-resource allocation;
+- history-guided allocation pruning for efficient resource selection;
+- elastic Degree-of-Parallelism (DoP) tuning for function congestion control;
+- JumpHash-based bucket partitioning for elastic repartitioning.
 
 ---
 

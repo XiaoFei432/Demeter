@@ -179,6 +179,7 @@ class Observation:
     pending_by_dc: Dict[str, List[FunctionSpec]]
     running: List[FunctionSpec] = field(default_factory=list)
     history: List[Mapping[str, float]] = field(default_factory=list)
+    invocation_history: object | None = None
 
     @property
     def data_center_map(self) -> Dict[str, DataCenter]:

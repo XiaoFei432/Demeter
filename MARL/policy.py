@@ -10,7 +10,9 @@ import numpy as np
 
 from .cost import estimate_metrics, valid_allocation
 from .features import FeatureEncoder
+from .history import InvocationHistory
 from .models import AllocationType, DataCenter, FunctionSpec, Observation, OrchestrationAction
+from .pruning import ConfigurationPruner, PruningConfig
 
 
 class BasePolicy(ABC):
@@ -94,10 +96,24 @@ class DemeterHeuristicPolicy(BasePolicy):
         allocations: Sequence[AllocationType],
         memory_loss_factor: float = 0.8,
         encoder: Optional[FeatureEncoder] = None,
+        enable_pruning: bool = True,
+        pruning_history_limit: int = 8,
+        pruning_input_bucket_ratio: float = 0.25,
+        pruning_overload_threshold: float = 0.8,
     ) -> None:
         self.allocations = list(allocations)
         self.memory_loss_factor = memory_loss_factor
         self.encoder = encoder or FeatureEncoder()
+        self.pruner = ConfigurationPruner(
+            allocations=self.allocations,
+            config=PruningConfig(
+                enabled=enable_pruning,
+                history_limit=pruning_history_limit,
+                input_bucket_ratio=pruning_input_bucket_ratio,
+                overload_threshold=pruning_overload_threshold,
+            ),
+            memory_loss_factor=memory_loss_factor,
+        )
 
     def plan(self, observation: Observation) -> List[OrchestrationAction]:
         dc_map = observation.data_center_map
@@ -115,6 +131,10 @@ class DemeterHeuristicPolicy(BasePolicy):
         priors = {name: val / prior_sum for name, val in priors.items()}
 
         actions = []
+        job_by_id = {job.job_id: job for job in observation.jobs}
+        history = observation.invocation_history
+        if not isinstance(history, InvocationHistory):
+            history = InvocationHistory()
         for fn in pending:
             affinities: Dict[str, float] = {}
             candidates = [dc for dc in observation.data_centers if not fn.candidate_dcs or dc.name in fn.candidate_dcs]
@@ -146,7 +166,14 @@ class DemeterHeuristicPolicy(BasePolicy):
 
             best_alloc = None
             best_score = float("-inf")
-            for alloc in self.allocations:
+            allocation_pool = self.pruner.prune(
+                fn,
+                job_by_id.get(fn.job_id),
+                affinity=posterior,
+                now=observation.now,
+                history=history,
+            )
+            for alloc in allocation_pool:
                 if not valid_allocation(fn, alloc, self.memory_loss_factor):
                     continue
                 metrics = estimate_metrics(fn, dc, alloc, dc_map, observation.now)

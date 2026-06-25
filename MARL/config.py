@@ -34,6 +34,13 @@ class RuntimeConfig:
     interval_seconds: float = 5.0
     max_wave_size: int = 20
     memory_loss_factor: float = 0.8
+    enable_pruning: bool = True
+    pruning_history_limit: int = 8
+    pruning_input_bucket_ratio: float = 0.25
+    pruning_overload_threshold: float = 0.8
+    enable_dop_tuning: bool = True
+    min_parallelism: int = 1
+    max_parallelism: int = 256
     enable_cluster_rpc: bool = False
     policy_path: Optional[str] = None
 
@@ -119,6 +126,13 @@ def load_config(path: str | Path) -> DemeterConfig:
         interval_seconds=float(runtime_raw.get("interval_seconds", 5.0)),
         max_wave_size=int(runtime_raw.get("max_wave_size", 20)),
         memory_loss_factor=float(runtime_raw.get("memory_loss_factor", 0.8)),
+        enable_pruning=bool(runtime_raw.get("enable_pruning", True)),
+        pruning_history_limit=int(runtime_raw.get("pruning_history_limit", 8)),
+        pruning_input_bucket_ratio=float(runtime_raw.get("pruning_input_bucket_ratio", 0.25)),
+        pruning_overload_threshold=float(runtime_raw.get("pruning_overload_threshold", 0.8)),
+        enable_dop_tuning=bool(runtime_raw.get("enable_dop_tuning", True)),
+        min_parallelism=int(runtime_raw.get("min_parallelism", 1)),
+        max_parallelism=int(runtime_raw.get("max_parallelism", 256)),
         enable_cluster_rpc=bool(runtime_raw.get("enable_cluster_rpc", False)),
         policy_path=runtime_raw.get("policy_path"),
     )

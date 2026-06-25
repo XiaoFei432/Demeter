@@ -30,6 +30,7 @@ outputs/
 checkpoints/
 logs/
 *.log
+TON2025-Wide-Area Elasticity.txt
 
 # Editors and OS files
 .idea/

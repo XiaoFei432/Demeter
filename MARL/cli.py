@@ -49,6 +49,8 @@ def cmd_simulate(args) -> None:
                 "avg_slo_bias": result.avg_slo_bias,
                 "slo_violations": result.slo_violations,
                 "memory_usage_gb_seconds": result.memory_usage_gb_seconds,
+                "dop_tuning_events": result.dop_tuning_events,
+                "history_records": result.history_records,
             }
         )
 
@@ -61,7 +63,8 @@ def cmd_simulate(args) -> None:
     for row in rows:
         print(
             f"{row['policy']}: cost={row['total_cost']:.6f}, "
-            f"avg_jct={row['avg_jct']:.3f}, slo_violation={row['slo_violations']:.3f}"
+            f"avg_jct={row['avg_jct']:.3f}, slo_violation={row['slo_violations']:.3f}, "
+            f"dop_events={row['dop_tuning_events']}"
         )
 
 
