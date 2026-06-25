@@ -1,4 +1,4 @@
-# Demeter: Exploiting Wide-Area Resource Elasticity With Fine-Grained Orchestration
+# Exploiting Wide-Area Resource Elasticity With Fine-Grained Orchestration for Serverless Analytics
 
 <!-- ![TON 2025](https://img.shields.io/badge/TON-2025-blue)
 ![Paper PDF](https://img.shields.io/badge/Paper-PDF-red)
